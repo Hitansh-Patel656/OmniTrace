@@ -36,7 +36,11 @@ export interface RawEventDoc {
   event_payload: Record<string, unknown>;
   timestamp: string;
   ingested_at: Date;
+  processed?: boolean;
+  resolved_customer_id?: string;
+  processed_at?: Date;
 }
+
 
 // ---------------------------------------------------------------------------
 // PostgreSQL — customers table

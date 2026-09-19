@@ -3,6 +3,7 @@ import { getCollection } from "../db/mongo";
 import { IngestRequest, RawEventDoc, IngestSuccess, Channel } from "../types";
 import { validateChannel, validateIngestBody } from "../middleware/validation";
 import { sendError, errorMessage } from "../utils/errors";
+import { processRawEvent } from "../services/engine";
 
 const router = Router();
 
@@ -37,12 +38,25 @@ router.post(
 
       const result = await collection.insertOne(document);
 
+      const rawEventDoc: RawEventDoc = {
+        ...document,
+        _id: result.insertedId,
+      };
+
+      // Process event through identity resolution & event stitching engine
+      try {
+        await processRawEvent(rawEventDoc);
+      } catch (engineErr) {
+        console.error("Warning: Engine processing failed for event:", engineErr);
+      }
+
       const success: IngestSuccess = { id: result.insertedId.toString() };
       res.status(202).json(success);
     } catch (err) {
       console.error("Error ingesting event:", err);
       sendError(res, 500, "Internal server error", errorMessage(err));
     }
+
   }
 );
 

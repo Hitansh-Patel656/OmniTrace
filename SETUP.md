@@ -148,6 +148,9 @@ curl -X POST http://localhost:3001/api/ingest/web \
 
 # Run the full endpoint test suite (seeds data + tests all 10 endpoints)
 npx ts-node data/test-endpoints.ts
+
+# Run the Identity Resolution & Event Stitching Engine benchmark
+npm run engine:benchmark
 ```
 
 ---
@@ -159,7 +162,9 @@ npx ts-node data/test-endpoints.ts
 | `npm run dev` | Start server with ts-node (hot-reloads on file save if using nodemon) |
 | `npm run build` | Compile TypeScript → `dist/` |
 | `npm start` | Run compiled `dist/index.js` (production) |
+| `npm run engine:benchmark` | Run batch identity resolution & timeline stitching benchmark against synthetic dataset |
 | `npm run lint` | Run ESLint on all `src/**/*.ts` files |
+
 
 ---
 
@@ -169,10 +174,12 @@ npx ts-node data/test-endpoints.ts
 |---|---|
 | `password authentication failed` | Check `DATABASE_URL` password in `.env` |
 | `ECONNREFUSED` on port 27017 | MongoDB isn't running — start it with `mongod` or start the service |
-| `ECONNREFUSED` on port 5432 | PostgreSQL isn't running — start the service |
+| `ECONNREFUSED` on port 5432 / 5433 | PostgreSQL isn't running — check `brew services list` or service status, and confirm `DATABASE_URL` port in `.env` |
 | `EADDRINUSE: port 3001` | Something else owns port 3001 — kill it or change `PORT` in `.env` |
 | `Cannot find module` errors | Run `npm install` — node_modules may be missing |
 | Tables missing | Re-run `npx ts-node data/setup-db.ts` |
+| Benchmark failure | Run `npm run engine:benchmark` to check resolution accuracy and verify db tables |
+
 
 ---
 
