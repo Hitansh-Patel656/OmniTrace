@@ -1,0 +1,553 @@
+{
+    "dataset_notes": {
+        "purpose": "Synthetic multi-channel event dataset for OmniTrace development, identity-resolution testing, and demo purposes.",
+        "ground_truth_customer_id": "Present on every event ONLY for evaluating identity-resolution accuracy during development. It must NOT be used as an input to the resolution algorithm itself — the algorithm should re-derive it from raw_identifiers alone. Compare its output against this field to measure accuracy.",
+        "churn_rule_reference": "ADR-005: a customer is labeled churned if they have an unresolved escalation followed by 30+ days of no further activity across any channel.",
+        "scenarios": {
+            "cust_001": "Alice — clean successful journey across web and app, no issues.",
+            "cust_002": "Bob — cart drop-off on web, no further activity (drop-off, not churn — no escalation involved).",
+            "cust_003": "Carol — call-center escalation that gets resolved (escalation, not churn).",
+            "cust_004": "Dave — repeat contact across call-center and web for the same unresolved issue (repeat-contact pattern).",
+            "cust_005": "Eve — call-center escalation left unresolved, followed by 30+ days of silence (churn = true per ADR-005).",
+            "cust_006": "Frank — full cross-channel deterministic identity resolution test: anonymous web session -> logs in (links cookie+email+loyalty_id) -> app login (links device_id) -> call center (links phone via loyalty_id) -> in-person visit (loyalty_id only).",
+            "cust_007": "Grace — probabilistic identity resolution test: two anonymous web sessions with different cookie IDs but the same IP address and close time proximity, no deterministic identifier ever appears."
+        }
+    },
+    "events": [
+        {
+            "ground_truth_customer_id": "cust_001",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-a1"
+            },
+            "event_type": "session_start",
+            "event_payload": {},
+            "timestamp": "2026-08-01T09:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_001",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-a1"
+            },
+            "event_type": "page_view",
+            "event_payload": {
+                "page": "/products/laptop"
+            },
+            "timestamp": "2026-08-01T09:02:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_001",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-a1"
+            },
+            "event_type": "add_to_cart",
+            "event_payload": {
+                "item": "Laptop Pro"
+            },
+            "timestamp": "2026-08-01T09:05:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_001",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-a1",
+                "email": "alice@example.com"
+            },
+            "event_type": "checkout_started",
+            "event_payload": {},
+            "timestamp": "2026-08-01T09:07:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_001",
+            "channel": "web",
+            "raw_identifiers": {
+                "email": "alice@example.com"
+            },
+            "event_type": "order_placed",
+            "event_payload": {
+                "order_id": "ORD-1001",
+                "amount": 1200
+            },
+            "timestamp": "2026-08-01T09:10:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_001",
+            "channel": "mobile_app",
+            "raw_identifiers": {
+                "device_id": "dev-a1",
+                "email": "alice@example.com"
+            },
+            "event_type": "app_login",
+            "event_payload": {},
+            "timestamp": "2026-08-03T18:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_001",
+            "channel": "mobile_app",
+            "raw_identifiers": {
+                "device_id": "dev-a1"
+            },
+            "event_type": "order_placed",
+            "event_payload": {
+                "order_id": "ORD-1002",
+                "amount": 45
+            },
+            "timestamp": "2026-08-03T18:05:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_002",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-b1"
+            },
+            "event_type": "session_start",
+            "event_payload": {},
+            "timestamp": "2026-08-05T14:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_002",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-b1"
+            },
+            "event_type": "page_view",
+            "event_payload": {
+                "page": "/products/shoes"
+            },
+            "timestamp": "2026-08-05T14:02:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_002",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-b1",
+                "email": "bob@example.com"
+            },
+            "event_type": "add_to_cart",
+            "event_payload": {
+                "item": "Running Shoes"
+            },
+            "timestamp": "2026-08-05T14:04:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_002",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-b1"
+            },
+            "event_type": "checkout_started",
+            "event_payload": {},
+            "timestamp": "2026-08-05T14:06:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_002",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-b1"
+            },
+            "event_type": "checkout_abandoned",
+            "event_payload": {},
+            "timestamp": "2026-08-05T14:15:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_003",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0303"
+            },
+            "event_type": "call_initiated",
+            "event_payload": {},
+            "timestamp": "2026-08-07T11:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_003",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0303"
+            },
+            "event_type": "issue_reported",
+            "event_payload": {
+                "category": "billing",
+                "description": "double charge"
+            },
+            "timestamp": "2026-08-07T11:03:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_003",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0303"
+            },
+            "event_type": "escalation",
+            "event_payload": {
+                "reason": "agent unable to resolve, transferred to supervisor"
+            },
+            "timestamp": "2026-08-07T11:10:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_003",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0303"
+            },
+            "event_type": "issue_resolved",
+            "event_payload": {
+                "resolution": "refund issued"
+            },
+            "timestamp": "2026-08-07T11:25:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_003",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0303"
+            },
+            "event_type": "call_ended",
+            "event_payload": {},
+            "timestamp": "2026-08-07T11:26:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0404"
+            },
+            "event_type": "call_initiated",
+            "event_payload": {},
+            "timestamp": "2026-08-10T09:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0404"
+            },
+            "event_type": "issue_reported",
+            "event_payload": {
+                "category": "login_issue"
+            },
+            "timestamp": "2026-08-10T09:05:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0404"
+            },
+            "event_type": "issue_unresolved",
+            "event_payload": {},
+            "timestamp": "2026-08-10T09:20:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0404"
+            },
+            "event_type": "call_ended",
+            "event_payload": {},
+            "timestamp": "2026-08-10T09:21:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "web",
+            "raw_identifiers": {
+                "email": "dave@example.com"
+            },
+            "event_type": "session_start",
+            "event_payload": {},
+            "timestamp": "2026-08-12T10:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "web",
+            "raw_identifiers": {
+                "email": "dave@example.com"
+            },
+            "event_type": "issue_reported",
+            "event_payload": {
+                "category": "login_issue",
+                "source": "contact form"
+            },
+            "timestamp": "2026-08-12T10:05:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0404"
+            },
+            "event_type": "call_initiated",
+            "event_payload": {},
+            "timestamp": "2026-08-15T13:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0404"
+            },
+            "event_type": "issue_reported",
+            "event_payload": {
+                "category": "login_issue"
+            },
+            "timestamp": "2026-08-15T13:04:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0404"
+            },
+            "event_type": "issue_unresolved",
+            "event_payload": {},
+            "timestamp": "2026-08-15T13:20:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_004",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0404"
+            },
+            "event_type": "call_ended",
+            "event_payload": {},
+            "timestamp": "2026-08-15T13:21:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_005",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0505"
+            },
+            "event_type": "call_initiated",
+            "event_payload": {},
+            "timestamp": "2026-08-09T15:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_005",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0505"
+            },
+            "event_type": "issue_reported",
+            "event_payload": {
+                "category": "service_outage"
+            },
+            "timestamp": "2026-08-09T15:02:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_005",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0505"
+            },
+            "event_type": "escalation",
+            "event_payload": {
+                "reason": "customer very upset, escalated to manager"
+            },
+            "timestamp": "2026-08-09T15:10:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_005",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0505"
+            },
+            "event_type": "issue_unresolved",
+            "event_payload": {},
+            "timestamp": "2026-08-09T15:30:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_005",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0505"
+            },
+            "event_type": "call_ended",
+            "event_payload": {},
+            "timestamp": "2026-08-09T15:31:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-f1"
+            },
+            "event_type": "session_start",
+            "event_payload": {},
+            "timestamp": "2026-08-14T08:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-f1"
+            },
+            "event_type": "page_view",
+            "event_payload": {
+                "page": "/products/watch"
+            },
+            "timestamp": "2026-08-14T08:02:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-f1",
+                "email": "frank@example.com",
+                "loyalty_id": "LOY-1006"
+            },
+            "event_type": "add_to_cart",
+            "event_payload": {
+                "item": "Smart Watch"
+            },
+            "timestamp": "2026-08-14T08:05:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "mobile_app",
+            "raw_identifiers": {
+                "device_id": "dev-f1",
+                "email": "frank@example.com"
+            },
+            "event_type": "app_login",
+            "event_payload": {},
+            "timestamp": "2026-08-16T19:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "mobile_app",
+            "raw_identifiers": {
+                "device_id": "dev-f1"
+            },
+            "event_type": "order_placed",
+            "event_payload": {
+                "order_id": "ORD-2001",
+                "item": "Smart Watch"
+            },
+            "timestamp": "2026-08-16T19:10:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0606",
+                "loyalty_id": "LOY-1006"
+            },
+            "event_type": "call_initiated",
+            "event_payload": {},
+            "timestamp": "2026-08-20T12:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0606",
+                "loyalty_id": "LOY-1006"
+            },
+            "event_type": "issue_reported",
+            "event_payload": {
+                "category": "delivery_delay"
+            },
+            "timestamp": "2026-08-20T12:05:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0606",
+                "loyalty_id": "LOY-1006"
+            },
+            "event_type": "issue_resolved",
+            "event_payload": {
+                "resolution": "expedited shipping arranged"
+            },
+            "timestamp": "2026-08-20T12:15:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "call_center",
+            "raw_identifiers": {
+                "phone": "+1-555-0606"
+            },
+            "event_type": "call_ended",
+            "event_payload": {},
+            "timestamp": "2026-08-20T12:16:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_006",
+            "channel": "in_person",
+            "raw_identifiers": {
+                "loyalty_id": "LOY-1006"
+            },
+            "event_type": "in_person_visit",
+            "event_payload": {
+                "store": "Downtown Branch",
+                "reason": "picked up replacement item"
+            },
+            "timestamp": "2026-08-22T16:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_007",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-g1",
+                "ip_address": "203.0.113.10"
+            },
+            "event_type": "session_start",
+            "event_payload": {},
+            "timestamp": "2026-08-18T20:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_007",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-g1",
+                "ip_address": "203.0.113.10"
+            },
+            "event_type": "page_view",
+            "event_payload": {
+                "page": "/products/backpack"
+            },
+            "timestamp": "2026-08-18T20:03:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_007",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-g1",
+                "ip_address": "203.0.113.10"
+            },
+            "event_type": "checkout_abandoned",
+            "event_payload": {},
+            "timestamp": "2026-08-18T20:10:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_007",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-g2",
+                "ip_address": "203.0.113.10"
+            },
+            "event_type": "session_start",
+            "event_payload": {},
+            "timestamp": "2026-08-19T09:00:00Z"
+        },
+        {
+            "ground_truth_customer_id": "cust_007",
+            "channel": "web",
+            "raw_identifiers": {
+                "cookie_id": "ck-g2",
+                "ip_address": "203.0.113.10"
+            },
+            "event_type": "order_placed",
+            "event_payload": {
+                "order_id": "ORD-3001",
+                "item": "Backpack"
+            },
+            "timestamp": "2026-08-19T09:15:00Z"
+        }
+    ]
+}
