@@ -15,7 +15,7 @@ Customer interactions today are scattered across multiple channels — mobile ap
 * Which experiences correlate with **churn**
 * Where customers **repeatedly contact support**
 
-**UnifyX** solves this by resolving customer identities across channels and stitching their raw event streams into one coherent, chronological journey — surfaced through an analyst-facing visualization interface.
+**OmniTrace** solves this by resolving customer identities across channels and stitching their raw event streams into one coherent, chronological journey — surfaced through an analyst-facing visualization interface.
 
 ---
 
@@ -43,7 +43,7 @@ Customer interactions today are scattered across multiple channels — mobile ap
                                             │  raw events
                                             ▼
                         ┌─────────────────────────────────────────┐
-                        │        INGESTION LAYER (Kafka / API)     │
+                        │        INGESTION LAYER (API)     │
                         │   Schema validation • Event buffering    │
                         └───────────────────┬─────────────────────┘
                                             ▼
@@ -102,7 +102,7 @@ Customer interactions today are scattered across multiple channels — mobile ap
 ## 📂 Project Structure
 
 ```
-unifyx/
+OmniTrace/
 ├── frontend/                 # React/Next.js analyst dashboard
 │   ├── components/
 │   │   ├── JourneyTimeline/
@@ -137,7 +137,7 @@ unifyx/
 ```bash
 # Clone the repo
 git clone https://github.com/<your-username>/unifyx.git
-cd unifyx
+cd OmniTrace
 
 
 # Backend setup
@@ -166,7 +166,7 @@ The dashboard will be available at `http://localhost:3000`.
 2. Abandons the cart and later calls the **call center** (event: `call_initiated`, `issue_reported`).
 3. The call escalates to a supervisor (event: `escalation`).
 4. The same customer opens the **mobile app** two days later using the same logged-in account (event: `app_login`, `order_placed`).
-5. **UnifyX** resolves all four touchpoints to one `customer_id`, stitches them into a single timeline, flags the escalation, and surfaces this journey in the drop-off/escalation dashboard — revealing a pattern of  *cart abandonment → support escalation → recovery* .
+5. **OmniTrace** resolves all four touchpoints to one `customer_id`, stitches them into a single timeline, flags the escalation, and surfaces this journey in the drop-off/escalation dashboard — revealing a pattern of  *cart abandonment → support escalation → recovery* .
 
 ---
 
