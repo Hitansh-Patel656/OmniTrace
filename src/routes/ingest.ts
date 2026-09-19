@@ -1,14 +1,19 @@
 import { Router, Request, Response } from "express";
 import { getCollection } from "../db/mongo";
-import { IngestRequest, RawEventDoc, ErrorResponse, IngestSuccess, Channel } from "../types";
+import { IngestRequest, RawEventDoc, IngestSuccess, Channel } from "../types";
 import { validateChannel, validateIngestBody } from "../middleware/validation";
+import { sendError, errorMessage } from "../utils/errors";
 
 const router = Router();
 
 /**
  * POST /api/ingest/:channel
- * Ingest raw event from given channel, store in MongoDB exactly as received,
- * return 202 Accepted with generated ID.
+ *
+ * Accepts a raw event from a given channel (web | mobile_app | call_center | in_person).
+ * Stores the validated event exactly as received into MongoDB raw_events — no transformation.
+ * Normalization belongs to the stitching service, not this endpoint (see CLAUDE.md, ADR-003).
+ *
+ * Response: 202 Accepted with the generated MongoDB document ID.
  */
 router.post(
   "/ingest/:channel",
@@ -25,7 +30,7 @@ router.post(
         channel,
         raw_identifiers: body.raw_identifiers,
         event_type: body.event_type,
-        event_payload: body.event_payload,
+        event_payload: body.event_payload ?? {},
         timestamp: body.timestamp,
         ingested_at: new Date(),
       };
@@ -36,12 +41,7 @@ router.post(
       res.status(202).json(success);
     } catch (err) {
       console.error("Error ingesting event:", err);
-      const error: ErrorResponse = {
-        error: "Internal server error",
-        details:
-          err instanceof Error ? err.message : "An unknown error occurred",
-      };
-      res.status(500).json(error);
+      sendError(res, 500, "Internal server error", errorMessage(err));
     }
   }
 );
