@@ -1,4 +1,3 @@
-
 # OmniTrace — Cross-Channel Journey Stitching Platform
 
 > **PS-4: Cross-Channel Journey Stitching**
@@ -20,27 +19,21 @@ Customer interactions today are scattered across multiple channels — mobile ap
 
 ---
 
-##  Key Features
+## Key Features
 
-| Feature                                           | Description                                                                                                                                                |
-| ------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| **Identity Resolution Engine**            | Probabilistic + deterministic matching to merge identifiers (device ID, email, phone, loyalty ID, cookie ID, CRM ID) into a single unified `customer_id` |
-| **Event Stitching Pipeline**              | Ingests, normalizes, and time-orders events from disparate channel schemas into one unified event format                                                   |
-
-| **Unified Customer Timeline**             | Chronological, cross-channel view of every touchpoint for a given customer                                                                                 |
-
-| **Drop-off & Escalation Detection**       | Automatically flags funnel exits, ticket escalations, and support loops                                                                                    |
-
-| **Repeat-Contact & Churn Pattern Mining** | ML-driven detection of behaviors correlated with churn and repeated support contact                                                                        |
-
-| **Analyst Visualization Dashboard**       | Interactive journey maps, funnels, and heatmaps for non-technical stakeholders                                                                             |
-
-| **Low-Latency Ingestion**                 | Streaming pipeline built for near-real-time event stitching                                                                                                |
-
+| Feature                                         | Description                                                                                                                                               |
+| ----------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| **Identity Resolution Engine**            | Probabilistic + deterministic matching to merge identifiers (device ID, email, phone, loyalty ID, cookie ID, CRM ID) into a single unified`customer_id` |
+| **Event Stitching Pipeline**              | Ingests, normalizes, and time-orders events from disparate channel schemas into one unified event format                                                  |
+| **Unified Customer Timeline**             | Chronological, cross-channel view of every touchpoint for a given customer                                                                                |
+| **Drop-off & Escalation Detection**       | Automatically flags funnel exits, ticket escalations, and support loops                                                                                   |
+| **Repeat-Contact & Churn Pattern Mining** | ML-driven detection of behaviors correlated with churn and repeated support contact                                                                       |
+| **Analyst Visualization Dashboard**       | Interactive journey maps, funnels, and heatmaps for non-technical stakeholders                                                                            |
+| **Low-Latency Ingestion**                 | Streaming pipeline built for near-real-time event stitching                                                                                               |
 
 ---
 
-##  System Architecture
+## System Architecture
 
 ```
                         ┌─────────────────────────────────────────┐
@@ -85,7 +78,7 @@ Customer interactions today are scattered across multiple channels — mobile ap
 
 ---
 
-##  Identity Resolution Approach
+## Identity Resolution Approach
 
 1. **Deterministic Matching** — exact matches on strong identifiers: verified email, phone number, loyalty/account ID, CRM customer ID.
 2. **Probabilistic Matching** — fuzzy/weighted matching on weaker signals: device fingerprint, IP + user-agent, name + address similarity, session/cookie continuity, behavioral time-proximity.
@@ -95,20 +88,14 @@ Customer interactions today are scattered across multiple channels — mobile ap
 
 ---
 
-##  Tech Stack
+## Tech Stack
 
-| Layer                               | Technology                                              |
-| ----------------------------------- | ------------------------------------------------------- |
-| Frontend                            | React / Next.js, Recharts, D3.js                        |
-| Backend / API                       | Node.js (Express) or Python (FastAPI)                   |
-| Event Streaming                     | Apache Kafka                                            |
-| Identity Resolution & Analytics     | Python, Scikit-learn, Pandas, NetworkX (identity graph) |
-| Database (unified timeline)         | PostgreSQL                                              |
-| Database (raw/flexible event store) | MongoDB                                                 |
-| Cache / Session store               | Redis (optional)                                        |
-| Containerization                    | Docker, Docker Compose                                  |
-
-> ⚠️ Adjust this table to match what you actually implement — this reflects the suggested stack from the problem statement.
+| Layer                               | Technology                   |
+| ----------------------------------- | ---------------------------- |
+| Backend / API                       | Node.js, Express, TypeScript |
+| Database (unified timeline)         | PostgreSQL (pg)              |
+| Database (raw/flexible event store) | MongoDB                      |
+| Schema Validation                   | Zod                          |
 
 ---
 
@@ -138,15 +125,12 @@ unifyx/
 └── README.md
 ```
 
----
-
-##  Getting Started
+## Getting Started
 
 ### Prerequisites
 
 * Node.js ≥ 18
 * Python ≥ 3.10
-
 
 ### Installation
 
@@ -154,7 +138,6 @@ unifyx/
 # Clone the repo
 git clone https://github.com/<your-username>/unifyx.git
 cd unifyx
-
 
 
 # Backend setup
@@ -197,17 +180,17 @@ The dashboard will be available at `http://localhost:3000`.
 
 ---
 
-## 👥 Team
+## Team
 
-| Name                | Role     |
-| ------------------- | -------- |
-| Hitansh | DB+API |
-| Hanuj | Stitching service |
-| Neel | "In progress" |
-| Tirth | "In progress" |
+| Name    | Role               |
+| ------- | ------------------ |
+| Hitansh | API and DBs        |
+| Hanuj   | Stitching Pipeline |
+| Neel    | *In progress       |
+| Tirth   | *In progress       |
 
 ---
 
-##  License
+## License
 
 This project was built as part of a hackathon submission. License TBD.
