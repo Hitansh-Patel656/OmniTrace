@@ -12,9 +12,15 @@ const DB_NAME = process.env.DB_NAME || "omnidb";
 export async function getDb(): Promise<Db> {
   if (db) return db;
 
-  client = new MongoClient(MONGODB_URI);
-  await client.connect();
-  db = client.db(DB_NAME);
+  const mongoUri = process.env.MONGODB_URI || "mongodb://localhost:27017";
+  const newClient = new MongoClient(mongoUri, {
+    serverSelectionTimeoutMS: 5000,
+    connectTimeoutMS: 5000,
+  });
+
+  await newClient.connect();
+  client = newClient;
+  db = newClient.db(DB_NAME);
   return db;
 }
 

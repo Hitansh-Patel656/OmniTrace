@@ -11,7 +11,7 @@ import { getCollection } from "./db/mongo";
 import { verifyPostgres } from "./db/postgres";
 
 const app = express();
-const PORT = process.env.PORT || 3001;
+const PORT = Number(process.env.PORT) || 3001;
 
 // Enable CORS for frontend dashboard
 app.use((req, res, next) => {
@@ -67,39 +67,48 @@ app.use((req, res) => {
 });
 
 // ---------------------------------------------------------------------------
-// Startup — verify both DB connections before accepting traffic
+// Startup — start listening immediately, then verify DB connections
 // ---------------------------------------------------------------------------
 
-async function startServer() {
-  try {
-    console.log("Connecting to MongoDB…");
-    await getCollection("raw_events");
-    console.log("✓ MongoDB connected");
+function startServer() {
+  app.listen(PORT, "0.0.0.0", async () => {
+    console.log(`\n✓ OmniTrace API listening on http://0.0.0.0:${PORT}`);
+    console.log(`  Healthcheck: http://0.0.0.0:${PORT}/health`);
+    console.log(`\nEndpoints:`);
+    console.log(`  POST   /api/ingest/:channel`);
+    console.log(`  GET    /api/identity/:customer_id`);
+    console.log(`  POST   /api/identity/merge`);
+    console.log(`  POST   /api/identity/split`);
+    console.log(`  GET    /api/customers/:customer_id/timeline`);
+    console.log(`  GET    /api/customers/search`);
+    console.log(`  GET    /api/analytics/dropoffs`);
+    console.log(`  GET    /api/analytics/escalations`);
+    console.log(`  GET    /api/analytics/repeat-contacts`);
+    console.log(`  GET    /api/analytics/churn-risk`);
+    console.log(`  POST   /api/engine/run`);
+    console.log(`  GET    /api/engine/status`);
 
-    console.log("Connecting to PostgreSQL…");
-    await verifyPostgres();
-    console.log("✓ PostgreSQL connected");
+    // Verify PostgreSQL connection
+    try {
+      console.log("Connecting to PostgreSQL…");
+      await verifyPostgres();
+      console.log("✓ PostgreSQL connected successfully");
+    } catch (err: any) {
+      console.error("⚠ Warning: PostgreSQL connection failed:", err.message);
+    }
 
-    app.listen(PORT, () => {
-      console.log(`\nOmniTrace API listening on http://localhost:${PORT}`);
-      console.log(`\nEndpoints:`);
-      console.log(`  POST   /api/ingest/:channel`);
-      console.log(`  GET    /api/identity/:customer_id`);
-      console.log(`  POST   /api/identity/merge`);
-      console.log(`  POST   /api/identity/split`);
-      console.log(`  GET    /api/customers/:customer_id/timeline`);
-      console.log(`  GET    /api/customers/search`);
-      console.log(`  GET    /api/analytics/dropoffs`);
-      console.log(`  GET    /api/analytics/escalations`);
-      console.log(`  GET    /api/analytics/repeat-contacts`);
-      console.log(`  GET    /api/analytics/churn-risk`);
-      console.log(`  POST   /api/engine/run`);
-      console.log(`  GET    /api/engine/status`);
-    });
-  } catch (err) {
-    console.error("Failed to start server:", err);
-    process.exit(1);
-  }
+    // Verify MongoDB connection
+    try {
+      console.log("Connecting to MongoDB…");
+      await getCollection("raw_events");
+      console.log("✓ MongoDB connected successfully");
+    } catch (err: any) {
+      console.error("⚠ Warning: MongoDB connection failed:", err.message);
+      console.error(
+        "  Tip: Ensure 0.0.0.0/0 (allow all IPs) is added to MongoDB Atlas -> Network Access."
+      );
+    }
+  });
 }
 
 startServer();
