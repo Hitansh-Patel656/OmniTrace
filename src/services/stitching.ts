@@ -1,14 +1,7 @@
 import { query } from "../db/postgres";
-import { Channel, TimelineEvent } from "../types";
+import { RawEventDoc, TimelineEvent } from "../types";
 import { v4 as uuidv4 } from "uuid";
 
-export interface RawEventInput {
-  _id?: unknown;
-  channel: Channel;
-  event_type: string;
-  event_payload?: Record<string, unknown>;
-  timestamp: string | Date;
-}
 
 // Canonical vocabulary mapping dictionary for common raw variations
 const CANONICAL_TYPE_MAP: Record<string, string> = {
@@ -49,7 +42,7 @@ const CANONICAL_TYPE_MAP: Record<string, string> = {
  */
 export async function stitchAndNormalizeEvent(
   customerId: string,
-  rawEvent: RawEventInput
+  rawEvent: RawEventDoc
 ): Promise<TimelineEvent> {
   const payload = rawEvent.event_payload || {};
   const rawType = (rawEvent.event_type || "").trim().toLowerCase();

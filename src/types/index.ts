@@ -88,7 +88,7 @@ export interface TimelineEvent {
 export interface AnalyticsFlag {
   id: string;          // UUID
   customer_id: string; // UUID FK → customers
-  flag_type: "dropoff" | "escalation" | "repeat_contact" | "churn_risk";
+  flag_type: "dropoff" | "escalation" | "repeat_contact" | "churn_risk" | "identity_merge";
   score: number;
   computed_at: string; // ISO 8601
   details: Record<string, unknown> | null;

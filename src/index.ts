@@ -5,6 +5,7 @@ import ingestRouter from "./routes/ingest";
 import identityRouter from "./routes/identity";
 import timelineRouter from "./routes/timeline";
 import analyticsRouter from "./routes/analytics";
+import engineRouter from "./routes/engine";
 
 import { getCollection } from "./db/mongo";
 import { verifyPostgres } from "./db/postgres";
@@ -29,6 +30,9 @@ app.use("/api", timelineRouter);
 
 // Analytics (PostgreSQL-backed)
 app.use("/api", analyticsRouter);
+
+// Engine admin — batch processing + status
+app.use("/api", engineRouter);
 
 // ---------------------------------------------------------------------------
 // Utility routes
@@ -77,6 +81,8 @@ async function startServer() {
       console.log(`  GET    /api/analytics/escalations`);
       console.log(`  GET    /api/analytics/repeat-contacts`);
       console.log(`  GET    /api/analytics/churn-risk`);
+      console.log(`  POST   /api/engine/run`);
+      console.log(`  GET    /api/engine/status`);
     });
   } catch (err) {
     console.error("Failed to start server:", err);

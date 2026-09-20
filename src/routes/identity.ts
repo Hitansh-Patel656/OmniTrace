@@ -135,7 +135,7 @@ router.post(
         // Record the analyst override as an analytics_flag
         await client.query(
           `INSERT INTO analytics_flags (id, customer_id, flag_type, score, computed_at, details)
-           VALUES ($1, $2, 'escalation', 1.0, NOW(), $3::jsonb)`,
+           VALUES ($1, $2, 'identity_merge', 1.0, NOW(), $3::jsonb)`,
           [
             uuidv4(),
             customer_id_a,
@@ -237,7 +237,7 @@ router.post(
         // Record the analyst override
         await client.query(
           `INSERT INTO analytics_flags (id, customer_id, flag_type, score, computed_at, details)
-           VALUES ($1, $2, 'escalation', 1.0, NOW(), $3::jsonb)`,
+           VALUES ($1, $2, 'identity_merge', 1.0, NOW(), $3::jsonb)`,
           [
             uuidv4(),
             customer_id,

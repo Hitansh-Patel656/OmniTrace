@@ -2,12 +2,13 @@
   "name": "omnitrace-ingestion",
   "version": "1.0.0",
   "description": "Ingestion endpoint for OmniTrace cross-channel journey stitching platform",
-  "main": "dist/index.js",
+  "main": "dist/src/index.js",
   "scripts": {
     "build": "tsc",
-    "start": "node dist/index.js",
+    "start": "node dist/src/index.js",
     "dev": "ts-node src/index.ts",
     "engine:benchmark": "ts-node data/run-engine.ts",
+    "engine:benchmark:clean": "ts-node data/run-engine.ts --clean",
     "lint": "eslint src/**/*.ts"
   },
 

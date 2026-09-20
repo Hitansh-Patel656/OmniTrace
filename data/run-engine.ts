@@ -10,6 +10,7 @@
 import * as fs from "fs";
 import * as path from "path";
 import dotenv from "dotenv";
+import { QueryResultRow } from "pg";
 import { getCollection, closeDb } from "../src/db/mongo";
 import { query, closePool } from "../src/db/postgres";
 import { processRawEvent } from "../src/services/engine";
@@ -34,12 +35,19 @@ interface DatasetFile {
   events: SyntheticEvent[];
 }
 
+interface TimelineRow extends QueryResultRow {
+  channel: string;
+  event_type: string;
+  event_time: Date;
+  resolution_status: string;
+}
+
 async function run() {
   console.log("======================================================================");
   console.log("🚀 OmniTrace Identity Resolution & Event Stitching Engine Benchmark");
   console.log("======================================================================\n");
 
-  const shouldClean = process.argv.includes("--clean") || true; // Default clean for isolated benchmark
+  const shouldClean = process.argv.includes("--clean");
 
   if (shouldClean) {
     console.log("🧹 Resetting benchmark state in MongoDB and PostgreSQL...");
@@ -189,7 +197,7 @@ async function run() {
   // Sample timeline verification for Frank (cross-channel journey)
   const frankId = groundTruthToResolved.get("cust_006")?.[0];
   if (frankId) {
-    const frankTimeline = await query(
+    const frankTimeline = await query<TimelineRow>(
       `SELECT channel, event_type, event_time, resolution_status
          FROM timeline_events
         WHERE customer_id = $1
@@ -198,7 +206,7 @@ async function run() {
     );
 
     console.log(`🔍 Verified Frank's Stitched Multi-Channel Timeline (${frankTimeline.length} events across web, app, call_center, in_person):`);
-    frankTimeline.forEach((t: any) => {
+    frankTimeline.forEach((t: TimelineRow) => {
       console.log(`   [${new Date(t.event_time).toISOString().substring(0, 16)}] [${t.channel.padEnd(11)}] ${t.event_type} (${t.resolution_status})`);
     });
     console.log("");

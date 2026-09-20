@@ -47,7 +47,13 @@ router.post(
       try {
         await processRawEvent(rawEventDoc);
       } catch (engineErr) {
-        console.error("Warning: Engine processing failed for event:", engineErr);
+        // Engine failure is non-fatal for the ingest response — the raw event is
+        // safely stored in MongoDB with processed: undefined. Use POST /api/engine/run
+        // to retry unprocessed events.
+        console.error(
+          `[ENGINE] Processing failed for event ${result.insertedId.toString()} — event is persisted in MongoDB and can be recovered via POST /api/engine/run`,
+          engineErr
+        );
       }
 
       const success: IngestSuccess = { id: result.insertedId.toString() };

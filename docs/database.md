@@ -81,7 +81,7 @@
 | ----------- | ---------------------- | -------------------------------------------------- |
 | id          | UUID (PK)              |                                                    |
 | customer_id | UUID (FK → customers) |                                                    |
-| flag_type   | VARCHAR                | dropoff / escalation / repeat_contact / churn_risk |
+| flag_type   | VARCHAR                | dropoff / escalation / repeat_contact / churn_risk / identity_merge |
 | score       | FLOAT                  | confidence/severity score                          |
 | computed_at | TIMESTAMP              |                                                    |
 | details     | JSONB                  | supporting metadata for the dashboard              |
