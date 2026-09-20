@@ -99,11 +99,10 @@ export const IngestModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => 
                   type="button"
                   key={ch}
                   onClick={() => setChannel(ch)}
-                  className={`rounded-lg border px-3 py-2 text-xs font-medium capitalize transition-all ${
-                    channel === ch
+                  className={`rounded-lg border px-3 py-2 text-xs font-medium capitalize transition-all ${channel === ch
                       ? "border-indigo-500 bg-indigo-600/20 text-indigo-300 shadow-[0_0_10px_rgba(99,102,241,0.2)]"
                       : "border-[#1e293b] bg-[#080d16] text-slate-400 hover:border-slate-700"
-                  }`}
+                    }`}
                 >
                   {ch.replace("_", " ")}
                 </button>
@@ -193,11 +192,10 @@ export const IngestModal: React.FC<Props> = ({ isOpen, onClose, onSuccess }) => 
           {/* Result Alert */}
           {result && (
             <div
-              className={`rounded-lg p-3 text-xs flex items-start gap-2 border ${
-                result.success
+              className={`rounded-lg p-3 text-xs flex items-start gap-2 border ${result.success
                   ? "bg-emerald-950/60 border-emerald-800/80 text-emerald-300"
                   : "bg-rose-950/60 border-rose-800/80 text-rose-300"
-              }`}
+                }`}
             >
               {result.success ? (
                 <CheckCircle2 size={16} className="shrink-0 text-emerald-400 mt-0.5" />
