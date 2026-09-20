@@ -108,32 +108,43 @@ export async function computeAnalyticsFlags(): Promise<AnalyticsComputationResul
       // ---------------------------------------------------------------------
       // 2. Repeat Support Contact Evaluation (OQ-4)
       // ---------------------------------------------------------------------
-      // Support contacts occur across call_center and support web interactions
-      const supportEvents = events.filter((e) => {
-        if (e.channel === "call_center") return true;
-        if (
-          e.channel === "web" &&
-          (e.event_type.includes("support") ||
-            e.event_type.includes("ticket") ||
-            e.event_type.includes("inquiry") ||
-            e.event_type.includes("complaint") ||
-            e.is_escalation)
-        ) {
-          return true;
-        }
+      // A "support contact" is one discrete customer-initiated outreach:
+      //   - call_center channel: counted when event_type = 'call_initiated'
+      //     (one call_initiated = one contact regardless of how many subsequent
+      //      events occur within that call)
+      //   - web channel: counted when event_type = 'issue_reported'
+      //     (each web issue submission is one contact)
+      //
+      // Counting individual events (e.g. call_ended, issue_reported within a
+      // call) would inflate the score and produce false positives for customers
+      // who had a single, fully-resolved call (e.g. Frank/cust_006).
+      const contactInitiations = events.filter((e) => {
+        if (e.channel === "call_center" && e.event_type === "call_initiated") return true;
+        if (e.channel === "web" && e.event_type === "issue_reported") return true;
         return false;
       });
 
-      const contactCount = supportEvents.length;
+      const contactCount = contactInitiations.length;
 
-      // Flag customers with repeated support contacts (>= 2 contacts)
+      // Flag customers with 2+ distinct support contact initiations
       if (contactCount >= 2) {
-        const channelsUsed = Array.from(new Set(supportEvents.map((e) => e.channel)));
+        const channelsUsed = Array.from(new Set(contactInitiations.map((e) => e.channel)));
+
+        // Infer issue category from the most common event payload patterns
+        const allSupportEvents = events.filter(
+          (e) => e.channel === "call_center" ||
+            (e.channel === "web" && e.event_type === "issue_reported")
+        );
+        const hasUnresolved = allSupportEvents.some((e) => e.resolution_status === "unresolved");
+        const issueCategory = hasUnresolved
+          ? "Recurring Unresolved Issue"
+          : "Repeat Support Contact";
+
         const details = {
-          issue_category: "Billing Discrepancy & Dispute",
+          issue_category: issueCategory,
           contact_count: contactCount,
           channels: channelsUsed,
-          recent_events: supportEvents.slice(-3).map((e) => ({
+          recent_events: contactInitiations.slice(-3).map((e) => ({
             channel: e.channel,
             event_type: e.event_type,
             timestamp: new Date(e.event_time).toISOString(),

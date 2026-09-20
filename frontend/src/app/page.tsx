@@ -26,6 +26,9 @@ export default function DashboardPage() {
   const [engineStatus, setEngineStatus] = useState<EngineStatus | null>(null);
   const [dropoffTotal, setDropoffTotal] = useState<number>(2);
   const [escalationTotal, setEscalationTotal] = useState<number>(3);
+  // Maps scenario.id -> customer_id resolved live from the DB.
+  // Never hardcoded — survives any --clean re-seed.
+  const [resolvedIds, setResolvedIds] = useState<Record<string, string>>({});
 
   useEffect(() => {
     const loadStats = async () => {
@@ -49,6 +52,31 @@ export default function DashboardPage() {
       } catch {
         // Fallback
       }
+
+      // Resolve each persona's real customer_id from the live DB.
+      // Scenarios without a lookupKey (Grace) are skipped — they have no
+      // searchable identifier and remain as anonymous sessions.
+      const ids: Record<string, string> = {};
+      await Promise.allSettled(
+        DEMO_SCENARIOS.map(async (sc) => {
+          if (!sc.lookupKey || !sc.lookupVal) return;
+          try {
+            // Build a typed params object — api.searchCustomers has explicit
+            // optional fields (email, phone, loyalty_id), so we can't use a
+            // computed key directly.
+            const searchParams: Parameters<typeof api.searchCustomers>[0] = { limit: 1 };
+            if (sc.lookupKey === "email") searchParams.email = sc.lookupVal;
+            else if (sc.lookupKey === "phone") searchParams.phone = sc.lookupVal;
+            else if (sc.lookupKey === "loyalty_id") searchParams.loyalty_id = sc.lookupVal;
+
+            const res = await api.searchCustomers(searchParams);
+            if (res.data[0]) ids[sc.id] = res.data[0].customer_id;
+          } catch {
+            // DB may not be seeded yet — silently skip
+          }
+        })
+      );
+      setResolvedIds(ids);
     };
 
     loadStats();
@@ -208,15 +236,33 @@ export default function DashboardPage() {
 
               <div className="mt-5 pt-3 border-t border-[#1e293b]/70 flex items-center justify-between">
                 <span className="font-mono text-[11px] text-slate-400">
-                  {formatShortUUID(sc.customerId)}
+                  {resolvedIds[sc.id]
+                    ? formatShortUUID(resolvedIds[sc.id])
+                    : sc.lookupKey
+                    ? <span className="italic text-slate-500">resolving…</span>
+                    : <span className="italic text-slate-500">anonymous</span>}
                 </span>
-                <Link
-                  href={`/customers/${sc.customerId}`}
-                  className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 group-hover:text-indigo-300 group-hover:translate-x-0.5 transition-all"
-                >
-                  <span>Inspect Timeline</span>
-                  <ArrowRight size={13} />
-                </Link>
+                {resolvedIds[sc.id] ? (
+                  <Link
+                    href={`/customers/${resolvedIds[sc.id]}`}
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-indigo-400 group-hover:text-indigo-300 group-hover:translate-x-0.5 transition-all"
+                  >
+                    <span>Inspect Timeline</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                ) : sc.lookupKey ? (
+                  // UUID not yet resolved (DB not seeded or API down)
+                  <span className="text-xs text-slate-500 italic">not found in DB</span>
+                ) : (
+                  // Grace — fully anonymous, link to directory
+                  <Link
+                    href="/customers"
+                    className="inline-flex items-center gap-1.5 text-xs font-semibold text-slate-500 group-hover:text-slate-400 transition-all"
+                  >
+                    <span>Browse Directory</span>
+                    <ArrowRight size={13} />
+                  </Link>
+                )}
               </div>
             </div>
           ))}

@@ -192,9 +192,12 @@ export interface SplitResponse {
 export interface DemoScenario {
   id: string;
   name: string;
-  customerId: string;
-  lookupKey: "email" | "phone" | "loyalty_id";
-  lookupVal: string;
+  /** Populated at runtime by searching the API — NOT hardcoded. */
+  resolvedCustomerId?: string;
+  /** Identifier type to search with. Undefined for fully anonymous sessions (e.g. Grace). */
+  lookupKey?: "email" | "phone" | "loyalty_id";
+  /** Identifier value for the search. Undefined when lookupKey is undefined. */
+  lookupVal?: string;
   tagline: string;
   description: string;
   channels: Channel[];

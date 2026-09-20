@@ -17,11 +17,11 @@ the pipeline reliably.
 
 ### Requirements
 
-* One ingestion endpoint per channel (or one generic endpoint with a `channel` param).
-* Validate required fields: at least one raw identifier, event_type, timestamp.
-* Store raw event in MongoDB immediately (before any processing) so nothing is lost.
-* Publish an "event ingested" message for downstream processing (Kafka topic, or
-  a simple in-process queue if Kafka is out of scope for the hackathon timeline).
+* One ingestion endpoint per channel: `POST /api/ingest/:channel` (web / mobile_app / call_center / in_person).
+* Validate required fields: at least one raw identifier, `event_type`, `timestamp` (Zod).
+* Store raw event in MongoDB immediately (before any processing) so nothing is lost on downstream failure.
+* Return `202 Accepted` with the MongoDB raw event `_id`.
+* No Kafka — REST endpoint + benchmark script simulates event stream (see ADR-003).
 
 ### Future
 
@@ -80,18 +80,22 @@ Surface actionable patterns: drop-offs, escalations, repeat contacts, churn corr
 
 ### Requirements
 
-* **Drop-off detection** : rule-based initially (e.g., funnel started but no completion
-  event within X time) — expand to statistical/ML detection if time allows.
-* **Escalation detection** : flag any event explicitly tagged `escalation`, plus
-  optionally infer escalations from repeated `issue_reported` events in one session.
-* **Repeat-contact detection** : cluster customers with ≥N support contacts for a
-  similar issue category within a rolling time window.
-* **Churn correlation** : correlate journey features (escalation count, drop-off count,
-  repeat-contact count) with a churn label/proxy using a simple model (logistic
-  regression or decision tree via Scikit-learn).
+* **Drop-off detection**: rule-based — `is_dropoff` flag set at stitch-time via `CANONICAL_TYPE_MAP`
+  for known abandonment event types. Aggregated by channel for the funnel view.
+* **Escalation detection**: `is_escalation` flag set at stitch-time for known escalation event
+  types. Aggregated by channel + day for the escalation trends view.
+* **Repeat-contact detection**: counts distinct support contact initiations per customer:
+  - `call_center` channel: one `call_initiated` = one contact.
+  - `web` channel: one `issue_reported` = one contact.
+  - Customers with ≥2 initiations are flagged `repeat_contact` with score = initiation count.
+  - Configurable threshold parameter on the API (`?threshold=3`).
+* **Churn detection (ADR-005)**: rule-based — a customer is flagged `churn_risk` when they have
+  an unresolved escalation followed by ≥30 days of silence across all channels. Score = 0.95.
 
 ### Future
 
+* ML-based churn scoring: correlate journey features (escalation count, drop-off count,
+  repeat-contact count) with a churn label/proxy using Scikit-learn logistic regression.
 * More sophisticated churn modeling (survival analysis, gradient boosting).
 * Anomaly detection for unusual journey patterns.
 
@@ -106,13 +110,20 @@ without querying the database directly.
 
 ### Requirements
 
-* **Customer search** — look up by email/phone/loyalty ID/customer_id.
+* **Customer search** — look up by email / phone / loyalty_id / customer_id.
 * **Journey timeline view** — chronological, cross-channel view of one customer's events,
-  with icons per channel and highlighted escalations/drop-offs.
-* **Funnel/drop-off view** — aggregate chart showing where customers exit a journey.
-* **Escalation dashboard** — frequency and trend of escalations by channel/time period.
-* **Churn-risk view** — ranked list of customers by churn-risk score, with contributing factors.
-* **Repeat-contact view** — customers with unresolved repeat issues.
+  with channel badges, highlighted escalations (`is_escalation`) and drop-offs (`is_dropoff`),
+  and an expandable raw-event payload viewer.
+* **Drop-off funnel view** — 5-stage e-commerce funnel showing conversion rate and abandonment
+  breakdown by channel (`/analytics/dropoffs`).
+* **Escalation trends** — daily escalation frequency grouped by channel, with KPI cards
+  (`/analytics/escalations`).
+* **Churn-risk view** — ranked list of customers by churn-risk score (ADR-005), with
+  contributing factors shown (`/analytics/churn`).
+* **Repeat-contact view** — customers with ≥N distinct support contact initiations, with
+  configurable threshold filter and expandable event detail (`/analytics/repeat`).
+* **Dashboard overview** — metric cards (customers, events, dropoffs, escalations, churn,
+  repeat) and demo persona scenario cards with live UUID resolution.
 
 ### Future
 

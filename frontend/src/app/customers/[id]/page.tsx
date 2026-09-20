@@ -71,10 +71,21 @@ export default function CustomerTimelinePage({
     null
   );
 
-  // Check if matches known persona
-  const matchingPersona = DEMO_SCENARIOS.find(
-    (p) => p.customerId.toLowerCase() === customerId.toLowerCase()
-  );
+  // Identify this customer as a known benchmark persona by matching their
+  // identity links against DEMO_SCENARIOS lookupKey/lookupVal.
+  // This is robust across DB re-seeds (no hardcoded UUIDs).
+  const matchingPersona = identityData
+    ? DEMO_SCENARIOS.find(
+        (sc) =>
+          sc.lookupKey &&
+          sc.lookupVal &&
+          identityData.data.some(
+            (link) =>
+              link.identifier_type === sc.lookupKey &&
+              link.identifier_value === sc.lookupVal
+          )
+      )
+    : undefined;
 
   const loadData = async () => {
     setLoading(true);
@@ -100,6 +111,7 @@ export default function CustomerTimelinePage({
   useEffect(() => {
     loadData();
   }, [customerId, selectedChannel]);
+
 
   const handleCopyId = () => {
     navigator.clipboard.writeText(customerId);

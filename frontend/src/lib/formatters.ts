@@ -94,17 +94,15 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
   {
     id: "cust_001",
     name: "Alice",
-    customerId: "cee08744-68ba-4600-859c-2872bc4721f6",
     lookupKey: "email",
     lookupVal: "alice@example.com",
     tagline: "Seamless Multi-Channel Journey",
-    description: "Clean cross-channel journey: Web session -> cart -> order -> App login -> reorder. 100% resolution.",
+    description: "Clean cross-channel journey: Web session → cart → order → App login → reorder. 100% resolution.",
     channels: ["web", "mobile_app"],
   },
   {
     id: "cust_002",
     name: "Bob",
-    customerId: "913cd985-1993-443e-a420-0d197b92943b",
     lookupKey: "email",
     lookupVal: "bob@example.com",
     tagline: "Cart Checkout Abandonment",
@@ -115,7 +113,6 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
   {
     id: "cust_003",
     name: "Carol",
-    customerId: "b60a3d79-8800-469c-a773-8e4487dde3b3",
     lookupKey: "phone",
     lookupVal: "+1-555-0303",
     tagline: "Resolved Call Center Escalation",
@@ -126,7 +123,6 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
   {
     id: "cust_004",
     name: "Dave",
-    customerId: "586bf8f5-7d87-44d1-a4f5-9122eafa42a4",
     lookupKey: "email",
     lookupVal: "dave@example.com",
     tagline: "Cross-Channel Repeat Support Contact",
@@ -137,7 +133,6 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
   {
     id: "cust_005",
     name: "Eve",
-    customerId: "89b91d18-b082-443c-ac12-f87322c69fa7",
     lookupKey: "phone",
     lookupVal: "+1-555-0505",
     tagline: "High Churn Risk (ADR-005)",
@@ -149,21 +144,20 @@ export const DEMO_SCENARIOS: DemoScenario[] = [
   {
     id: "cust_006",
     name: "Frank",
-    customerId: "67268875-f6a5-4ddc-9e57-a3956c8968d1",
     lookupKey: "loyalty_id",
     lookupVal: "LOY-1006",
-    tagline: "Full 5-Channel Identity Stitching",
-    description: "Anonymous web cookie -> login email -> app device ID -> call center phone -> store POS loyalty scan.",
+    tagline: "Full 4-Channel Deterministic Identity Stitching",
+    description: "Anonymous web cookie → login email → app device ID → call center phone → store POS loyalty scan.",
     channels: ["web", "mobile_app", "call_center", "in_person"],
   },
   {
     id: "cust_007",
     name: "Grace",
-    customerId: "9cde4c9d-0acb-4fb1-b061-b215c2bc4ac4",
-    lookupKey: "email",
-    lookupVal: "grace@example.com",
-    tagline: "Probabilistic Proximity Link",
-    description: "Two anonymous sessions linked through IP proximity + time-window heuristic (confidence < 1.0).",
+    // Grace is fully anonymous — no email, phone, or loyalty_id in any event.
+    // Her two sessions are linked only via IP-address proximity (probabilistic).
+    // There is no searchable identifier for the /api/customers/search endpoint.
+    tagline: "Probabilistic IP-Proximity Link",
+    description: "Two anonymous sessions linked through IP proximity + time-window heuristic (confidence < 1.0). No searchable identifier.",
     channels: ["web"],
   },
 ];

@@ -10,95 +10,139 @@
 
 ## System Overview
 
-OmniTrace is composed of five stages, each a separable module:
+OmniTrace is composed of five stages, each a separable TypeScript module under `src/`:
 
 ```
-                CHANNEL SOURCES
-   Mobile App │ Website │ Call Center │ POS
-                        │  raw events
-                        ▼
-              INGESTION LAYER (Kafka / API)
-        Schema validation • Event buffering
-                        │
-                        ▼
-           IDENTITY RESOLUTION SERVICE
-   Deterministic matching (email/phone/loyalty ID)
-   Probabilistic matching (device/behavioral)
-   Identity Graph (nodes = raw IDs, edges = match confidence)
-                        │
-                        ▼
-        EVENT NORMALIZATION & STITCHING
-   Common event schema • Chronological timeline builder
-                        │
-                        ▼
-           UNIFIED CUSTOMER TIMELINE
-              (PostgreSQL datastore)
-                        │
-          ┌─────────────┴─────────────┐
-          ▼                           ▼
-   ANALYTICS ENGINE            VISUALIZATION DASHBOARD
-   Drop-off detection          Journey timeline (per customer)
-   Escalation detection        Funnel / drop-off charts
-   Churn correlation (ML)      Churn & repeat-contact heatmaps
-   Repeat-contact clustering   Search & filter by customer/channel
+                    CHANNEL SOURCES
+       Mobile App │ Website │ Call Center │ POS
+                            │  raw events
+                            ▼
+            ┌─────────────────────────────────────┐
+            │     INGESTION LAYER (REST API)       │
+            │  POST /api/ingest/:channel           │
+            │  Zod schema validation               │
+            │  MongoDB raw event write             │
+            │  (no Kafka — see ADR-003)            │
+            └──────────────┬──────────────────────┘
+                           │
+                           ▼
+            ┌─────────────────────────────────────┐
+            │   IDENTITY RESOLUTION SERVICE        │
+            │  src/services/identity.ts            │
+            │                                      │
+            │  Pass 1 — Deterministic              │
+            │    email / phone / loyalty_id        │
+            │    confidence = 1.0                  │
+            │                                      │
+            │  Pass 2 — Device/Cookie              │
+            │    device_id / cookie_id             │
+            │    confidence = 0.85                 │
+            │                                      │
+            │  Pass 3 — IP Proximity               │
+            │    ip_address + 30-min window        │
+            │    confidence = 0.80                 │
+            │                                      │
+            │  Merges → identity_links table       │
+            └──────────────┬──────────────────────┘
+                           │
+                           ▼
+            ┌─────────────────────────────────────┐
+            │  EVENT NORMALIZATION & STITCHING     │
+            │  src/services/stitching.ts           │
+            │                                      │
+            │  CANONICAL_TYPE_MAP (14 raw types)   │
+            │  is_escalation / is_dropoff at write │
+            │  raw_event_ref → MongoDB _id         │
+            │  ORDER BY event_time ASC             │
+            └──────────────┬──────────────────────┘
+                           │
+                           ▼
+            ┌─────────────────────────────────────┐
+            │     UNIFIED CUSTOMER TIMELINE        │
+            │  PostgreSQL — timeline_events table  │
+            └──────────┬──────────────────────────┘
+                       │
+           ┌───────────┴───────────┐
+           ▼                       ▼
+  ┌──────────────────┐   ┌───────────────────────────┐
+  │ ANALYTICS ENGINE │   │  VISUALIZATION DASHBOARD   │
+  │ src/services/    │   │  frontend/ (Next.js 16)    │
+  │ analytics.ts     │   │                            │
+  │                  │   │  /              Dashboard  │
+  │  Churn risk      │   │  /customers     Explorer   │
+  │  (ADR-005 rule)  │   │  /customers/[id] Timeline  │
+  │                  │   │  /analytics/dropoffs       │
+  │  Repeat contact  │   │  /analytics/escalations    │
+  │  (contact count) │   │  /analytics/churn          │
+  │                  │   │  /analytics/repeat         │
+  │  → analytics_    │   │                            │
+  │    flags table   │   │  API client: lib/api.ts    │
+  └──────────────────┘   └───────────────────────────┘
 ```
 
 ## Module Responsibilities
 
-### 1. Ingestion Layer
+### 1. Ingestion Layer — `src/routes/ingest.ts`
 
-* Accepts raw events from each channel source (via Kafka topics or a REST endpoint per channel).
-* Validates incoming events against the raw channel-specific schema.
-* Buffers/queues events for downstream processing.
-* See `docs/features.md` → Ingestion for event format details per channel.
+* Accepts raw events from each channel via `POST /api/ingest/:channel`.
+* Validates the payload with Zod (requires at least one raw identifier, `event_type`, `timestamp`).
+* Writes the raw event to **MongoDB** immediately — before any processing — so no event is lost on downstream failure.
+* Returns `202 Accepted` with the MongoDB `_id` as the raw event reference.
+* No Kafka or message broker — see **ADR-003** in `docs/decisions.md`.
 
-### 2. Identity Resolution Service
+### 2. Identity Resolution Service — `src/services/identity.ts`
 
-* Builds an  **identity graph** : every raw identifier (device ID, email, phone, loyalty ID,
-  cookie/session ID) is a node.
-* Deterministic matches (exact email, phone, account ID) create high-confidence edges.
-* Probabilistic matches (device fingerprint similarity, IP + time proximity, name/address
-  similarity) create weighted edges above a confidence threshold.
-* Connected components in the graph collapse into one `customer_id`.
-* Runs incrementally — new events update the graph rather than recomputing from scratch.
-* See `docs/decisions.md` for the specific algorithm/library chosen.
+* **Pass 1 — Deterministic**: exact match on `email`, `phone`, `loyalty_id`. Confidence **1.0**.
+* **Pass 2 — Device/Cookie**: exact match on `device_id`, `cookie_id`. Confidence **0.85**.
+* **Pass 3 — IP Proximity**: same `ip_address` within a 30-minute event window. Confidence **0.80**.
+* Each resolved link is written to `identity_links` with its confidence score.
+* New events are evaluated incrementally against existing links — no full recompute.
+* Analyst override endpoints: `POST /api/identity/merge` and `POST /api/identity/split`.
+* **ADR-007**: `ground_truth_customer_id` in the sample dataset is never read by this service — only used by the benchmark harness to score accuracy.
+* **ADR-008**: When a customer's identifiers across two channels never co-appear in a single event, the engine cannot auto-merge. Analyst merge is the correct resolution path.
 
-### 3. Event Normalization & Stitching
+### 3. Event Normalization & Stitching — `src/services/stitching.ts`
 
-* Converts every channel-specific event into the **common event schema** (see `database.md`).
-* Orders all of a customer's events chronologically into a single timeline.
-* Tags each event with channel, event type, and any resolution/escalation metadata.
+* Maps every raw `event_type` string to a canonical form via `CANONICAL_TYPE_MAP` (14 entries covering all 4 channels).
+* Sets `is_escalation = true` for known escalation event types at write time.
+* Sets `is_dropoff = true` for known abandonment event types at write time.
+* Stores the original MongoDB `_id` as `raw_event_ref` for audit traceability.
+* Inserts normalized events into `timeline_events` ordered by `event_time ASC`.
 
-### 4. Analytics Engine
+### 4. Analytics Engine — `src/services/analytics.ts`
 
-* **Drop-off detection** : identifies where a customer's journey ends mid-funnel
-  (e.g., cart abandonment, incomplete application).
-* **Escalation detection** : flags events tagged as escalations or supervisor handoffs.
-* **Repeat-contact detection** : clusters customers who contact support multiple times
-  for a similar unresolved issue within a time window.
-* **Churn correlation** : uses historical churn labels (or a proxy, e.g., account closure/inactivity)
-  to find which journey patterns correlate with churn (Scikit-learn: logistic regression /
-  decision tree / simple correlation analysis, depending on time available).
+Runs as a batch pass over all customers in PostgreSQL after stitching completes.
 
-### 5. Analyst Dashboard
+* **Churn Risk (ADR-005)**: flags a customer `churn_risk` with score `0.95` when they have an unresolved escalation followed by ≥30 days of no activity across any channel.
+* **Repeat Contact Detection**: counts distinct support contact initiations per customer:
+  * `call_center` channel: one `call_initiated` event = one contact.
+  * `web` channel: one `issue_reported` event = one contact.
+  * Flags customers with ≥2 contacts as `repeat_contact` with score = contact count.
+  * Issue category inferred from resolution status (`"Recurring Unresolved Issue"` or `"Repeat Support Contact"`).
+* Both flag types are written to the `analytics_flags` table and cleared/recomputed on each engine run.
 
-* Search a customer by ID/email/phone → view their full stitched timeline.
-* Aggregate views: funnel drop-off chart, escalation frequency by channel, churn-risk
-  distribution, repeat-contact leaderboard.
-* Built with React/Next.js + Recharts/D3.js (see `docs/features.md` → Dashboard).
+> **Note**: Churn detection is rule-based (ADR-005). ML-based churn scoring (Scikit-learn logistic regression) is listed as a future enhancement.
+
+### 5. Analyst Dashboard — `frontend/`
+
+* **Next.js 16** (Turbopack) React app served on port 3000.
+* Calls the backend API exclusively via `frontend/src/lib/api.ts`.
+* Dashboard personas (`DEMO_SCENARIOS`) resolve their customer UUIDs dynamically from the live DB on mount — no hardcoded UUIDs.
+* Seven pages: Overview, Customer Explorer, Timeline Detail, Drop-off Funnel, Escalation Trends, Churn Radar, Repeat Contacts.
 
 ## Data Flow Summary
 
-1. Event generated on a channel → sent to ingestion layer.
-2. Ingestion validates & forwards to identity resolution.
-3. Identity resolution assigns/confirms a `customer_id`.
-4. Stitching service normalizes the event and inserts it into that customer's timeline.
-5. Analytics engine runs (batch or near-real-time) over timelines to produce flags/scores.
-6. Dashboard queries the unified timeline + analytics results for display.
+1. Event generated on a channel → `POST /api/ingest/:channel`.
+2. Ingestion validates (Zod) → writes raw event to MongoDB.
+3. `POST /api/engine/run` (or `npm run engine:benchmark`) triggers:
+   a. Identity resolution assigns/confirms a `customer_id`.
+   b. Stitching normalizes the event and inserts it into `timeline_events`.
+   c. Analytics computes churn + repeat-contact flags into `analytics_flags`.
+4. Dashboard queries the unified timeline and analytics results for display.
 
 ## Non-Functional Considerations
 
-* **Latency** : identity resolution should be incremental, not batch-recompute, to keep
-  ingestion-to-timeline latency low.
-* **Accuracy** : track a confidence score per identity merge so analysts can audit/override
-  incorrect stitches (surface this in the dashboard as a trust indicator).
+* **Latency**: identity resolution is incremental (new events re-evaluate existing links without recomputing the full graph).
+* **Accuracy**: every identity merge carries a `confidence_score` — visible in the customer timeline view so analysts can audit and override.
+* **Auditability**: `raw_event_ref` on every `timeline_event` links back to the original MongoDB document.
+* **Precision over recall**: the engine deliberately avoids speculative merges that can't be confirmed by a shared identifier (ADR-008). The analyst merge endpoint is the escape hatch.

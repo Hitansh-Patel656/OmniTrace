@@ -4,228 +4,218 @@ import React, { useEffect, useState } from "react";
 import Link from "next/link";
 import {
   Flame,
-  CheckCircle2,
-  AlertTriangle,
-  Clock,
   ArrowRight,
-  TrendingUp,
+  AlertOctagon,
+  BarChart3,
+  Sparkles,
+  RefreshCw,
   Headphones,
+  Globe,
+  Smartphone,
+  Store,
   Calendar,
+  TrendingUp,
 } from "lucide-react";
-import {
-  AreaChart,
-  Area,
-  XAxis,
-  YAxis,
-  Tooltip,
-  ResponsiveContainer,
-} from "recharts";
 import { api } from "@/lib/api";
-import { EscalationItem } from "@/lib/types";
-import { ChannelBadge } from "@/components/ui/ChannelBadge";
+import { EscalationItem, Channel } from "@/lib/types";
 import { MetricCard } from "@/components/dashboard/MetricCard";
-import { formatDateTime } from "@/lib/formatters";
+import { ChannelBadge } from "@/components/ui/ChannelBadge";
+
+const CHANNEL_META: Record<
+  Channel,
+  { name: string; icon: React.ComponentType<{ size?: number; className?: string }> }
+> = {
+  web: { name: "Web Browser", icon: Globe },
+  mobile_app: { name: "Mobile App", icon: Smartphone },
+  call_center: { name: "Call Center", icon: Headphones },
+  in_person: { name: "In-Person Store", icon: Store },
+};
 
 export default function EscalationsPage() {
   const [data, setData] = useState<EscalationItem[]>([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+
+  const loadEscalations = async () => {
+    setLoading(true);
+    try {
+      const res = await api.getEscalations();
+      setData(res.data || []);
+    } catch (err) {
+      console.error("Failed to load escalations:", err);
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadEscalations = async () => {
-      setLoading(true);
-      try {
-        const res = await api.getEscalations();
-        setData(res.data || []);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : "Failed to load escalations";
-        setError(msg);
-      } finally {
-        setLoading(false);
-      }
-    };
     loadEscalations();
   }, []);
 
-  const totalEscalations = data.reduce((acc, curr) => acc + curr.escalation_count, 0);
+  const totalEscalations = data.reduce((sum, d) => sum + Number(d.escalation_count), 0);
 
-  const chartData = data.map((d) => ({
-    date: new Date(d.day).toLocaleDateString("en-US", { month: "short", day: "numeric" }),
-    escalations: d.escalation_count,
-    channel: d.channel,
-  }));
+  const byChannel = data.reduce<Record<string, number>>((acc, item) => {
+    acc[item.channel] = (acc[item.channel] || 0) + Number(item.escalation_count);
+    return acc;
+  }, {});
+  const topChannel = Object.entries(byChannel).sort((a, b) => b[1] - a[1])[0];
+
+  const byDay = data.reduce<Record<string, EscalationItem[]>>((acc, item) => {
+    const day = item.day ? item.day.split("T")[0] : "Unknown";
+    if (!acc[day]) acc[day] = [];
+    acc[day].push(item);
+    return acc;
+  }, {});
+  const sortedDays = Object.keys(byDay).sort((a, b) => b.localeCompare(a));
 
   return (
     <div className="space-y-8 max-w-7xl mx-auto">
-      {/* Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#1e293b]/70 pb-6">
         <div>
           <div className="flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-amber-400">
             <Flame size={14} />
-            <span>Support Friction & Critical Incidents</span>
+            <span>Support Escalation Intelligence</span>
           </div>
           <h1 className="text-2xl font-bold tracking-tight text-white mt-1">
-            Escalation Trends & Resolution
+            Escalation Incidents
           </h1>
-          <p className="text-xs text-slate-400 mt-1">
-            Daily frequency of tier-2 support escalations grouped by channel via <code className="text-slate-300">GET /api/analytics/escalations</code>.
+          <p className="text-sm text-slate-400 mt-1 max-w-xl">
+            Tier-2 escalations detected across all channels. Each entry represents a customer
+            interaction that exceeded first-line resolution capacity.
           </p>
         </div>
-
-        {/* Demo persona quick links */}
-        <div className="flex items-center gap-2">
-          <Link
-            href="/customers/b60a3d79-8800-469c-a773-8e4487dde3b3"
-            className="flex items-center gap-1.5 rounded-lg border border-emerald-900/50 bg-emerald-950/20 px-3 py-1.5 text-xs text-emerald-300 hover:bg-emerald-900/30 transition-all"
+        <div className="flex items-center gap-3 shrink-0">
+          <button
+            onClick={loadEscalations}
+            disabled={loading}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-[#1e293b] bg-[#0c121e] text-xs font-medium text-slate-300 hover:bg-slate-800 hover:text-white transition-all disabled:opacity-50"
           >
-            <CheckCircle2 size={13} className="text-emerald-400" />
-            <span>Persona Carol (Resolved) →</span>
-          </Link>
+            <RefreshCw size={13} className={loading ? "animate-spin" : ""} />
+            <span>Refresh</span>
+          </button>
           <Link
-            href="/customers/89b91d18-b082-443c-ac12-f87322c69fa7"
-            className="flex items-center gap-1.5 rounded-lg border border-rose-900/50 bg-rose-950/20 px-3 py-1.5 text-xs text-rose-300 hover:bg-rose-900/30 transition-all"
+            href="/customers"
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-gradient-to-r from-amber-700/60 to-rose-700/60 border border-amber-700/50 text-xs font-semibold text-amber-200 hover:brightness-110 transition-all"
           >
-            <AlertTriangle size={13} className="text-rose-400" />
-            <span>Persona Eve (Unresolved) →</span>
+            <span>Customer Directory</span>
+            <ArrowRight size={13} />
           </Link>
         </div>
       </div>
 
-      {/* KPI Cards — 100% Dynamic */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
         <MetricCard
           title="Total Escalations"
-          value={totalEscalations}
-          subtitle="Events flagged with is_escalation = true"
+          value={loading ? "—" : totalEscalations}
+          subtitle="Across all channels"
           icon={Flame}
           accentColor="amber"
         />
         <MetricCard
-          title="Primary Escalation Channel"
-          value={
-            data.length > 0
-              ? (
-                  data.reduce(
-                    (acc, curr) =>
-                      curr.escalation_count > acc.count
-                        ? { channel: curr.channel, count: curr.escalation_count }
-                        : acc,
-                    { channel: "call_center", count: 0 }
-                  ).channel || "call_center"
-                ).toUpperCase().replace("_", " ")
-              : "None"
-          }
-          subtitle="Voice/Support interactions requiring tier-2 routing"
-          icon={Headphones}
-          accentColor="cyan"
+          title="Days With Escalations"
+          value={loading ? "—" : sortedDays.length}
+          subtitle="Distinct calendar days"
+          icon={Calendar}
+          accentColor="rose"
         />
         <MetricCard
-          title="Benchmark Resolution Rate"
-          value="66.7%"
-          subtitle="2 of 3 escalations resolved"
+          title="Top Escalation Channel"
+          value={loading || !topChannel ? "—" : topChannel[0].replace(/_/g, " ")}
+          subtitle={topChannel ? `${topChannel[1]} escalations` : "No data"}
           icon={TrendingUp}
-          accentColor="emerald"
+          accentColor="indigo"
         />
       </div>
 
-      {/* Recharts Area Timeline */}
-      <div className="rounded-xl border border-[#1e293b] bg-[#0c121e] p-6 shadow-xl space-y-4">
-        <div className="flex items-center justify-between border-b border-[#1e293b]/70 pb-3">
-          <div className="flex items-center gap-2">
-            <Flame size={16} className="text-amber-400" />
-            <h2 className="text-sm font-bold text-white uppercase tracking-wider">
-              Daily Escalation Frequency
-            </h2>
+      {!loading && Object.keys(byChannel).length > 0 && (
+        <div className="rounded-xl border border-[#1e293b] bg-[#0c121e]/80 p-6 space-y-4">
+          <div className="flex items-center gap-2 text-sm font-bold text-slate-200 uppercase tracking-wider">
+            <BarChart3 size={14} className="text-amber-400" />
+            <span>Escalations by Channel</span>
           </div>
-          <span className="text-xs text-slate-400">Time-series Trend</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {(["call_center", "web", "mobile_app", "in_person"] as Channel[]).map((ch) => {
+              const count = byChannel[ch] || 0;
+              const Icon = CHANNEL_META[ch].icon;
+              const pct = totalEscalations > 0 ? Math.round((count / totalEscalations) * 100) : 0;
+              return (
+                <div key={ch} className="rounded-lg bg-[#080d16] border border-[#1e293b]/70 p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Icon size={14} className="text-slate-400" />
+                    <span className="text-xs text-slate-400">{CHANNEL_META[ch].name}</span>
+                  </div>
+                  <div className="text-2xl font-bold text-white">{count}</div>
+                  <div className="text-[11px] text-slate-500">{pct}% of total</div>
+                  <div className="h-1 rounded-full bg-[#1e293b] overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-gradient-to-r from-amber-600 to-rose-500 transition-all"
+                      style={{ width: `${pct}%` }}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      <div className="space-y-4">
+        <div className="flex items-center gap-2 text-sm font-bold text-slate-200">
+          <Sparkles size={14} className="text-amber-400" />
+          <span>Escalation Feed</span>
+          <span className="ml-2 rounded-full bg-slate-800 border border-slate-700 px-2 py-0.5 text-xs font-normal text-slate-400">
+            {data.length} records
+          </span>
         </div>
 
-        <div className="h-64 w-full pt-4">
-          <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 10, right: 30, left: 0, bottom: 20 }}>
-              <defs>
-                <linearGradient id="escalationGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#f59e0b" stopOpacity={0.6} />
-                  <stop offset="95%" stopColor="#f59e0b" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <XAxis
-                dataKey="date"
-                stroke="#64748b"
-                fontSize={11}
-                tickLine={false}
-                axisLine={{ stroke: "#1e293b" }}
-              />
-              <YAxis
-                stroke="#64748b"
-                fontSize={11}
-                tickLine={false}
-                axisLine={{ stroke: "#1e293b" }}
-                allowDecimals={false}
-              />
-              <Tooltip
-                contentStyle={{
-                  backgroundColor: "#080d16",
-                  borderColor: "#1e293b",
-                  borderRadius: "8px",
-                  fontSize: "12px",
-                }}
-              />
-              <Area
-                type="monotone"
-                dataKey="escalations"
-                stroke="#f59e0b"
-                strokeWidth={2}
-                fillOpacity={1}
-                fill="url(#escalationGrad)"
-              />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </div>
-
-      {/* Escalation Incidents Log */}
-      <div className="rounded-xl border border-[#1e293b] bg-[#0c121e] shadow-xl overflow-hidden">
-        <div className="p-4 border-b border-[#1e293b] bg-[#080d16]">
-          <h3 className="text-xs font-bold text-slate-300 uppercase tracking-wider">
-            Daily Channel Aggregations
-          </h3>
-        </div>
-
-        <table className="w-full text-left text-xs">
-          <thead className="border-b border-[#1e293b] bg-[#080d16]/50 text-[11px] uppercase tracking-wider text-slate-400">
-            <tr>
-              <th className="px-5 py-3 font-semibold">Incident Date</th>
-              <th className="px-5 py-3 font-semibold">Channel</th>
-              <th className="px-5 py-3 font-semibold">Escalation Count</th>
-              <th className="px-5 py-3 text-right font-semibold">Action</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-[#1e293b]/60">
-            {data.map((row, idx) => (
-              <tr key={idx} className="hover:bg-slate-900/40 transition-colors">
-                <td className="px-5 py-3 font-mono text-slate-300">
-                  {formatDateTime(row.day)}
-                </td>
-                <td className="px-5 py-3">
-                  <ChannelBadge channel={row.channel} size="sm" />
-                </td>
-                <td className="px-5 py-3 font-mono font-bold text-amber-400 text-sm">
-                  {row.escalation_count}
-                </td>
-                <td className="px-5 py-3 text-right">
-                  <Link
-                    href="/customers"
-                    className="inline-flex items-center gap-1 text-indigo-400 hover:text-indigo-300 font-medium"
-                  >
-                    <span>Inspect Customers</span>
-                    <ArrowRight size={13} />
-                  </Link>
-                </td>
-              </tr>
+        {loading ? (
+          <div className="rounded-xl border border-[#1e293b] bg-[#0c121e]/80 p-12 flex items-center justify-center">
+            <RefreshCw size={20} className="animate-spin text-slate-500 mr-3" />
+            <span className="text-slate-400 text-sm">Loading escalation data…</span>
+          </div>
+        ) : data.length === 0 ? (
+          <div className="rounded-xl border border-[#1e293b] bg-[#0c121e]/80 p-12 text-center">
+            <AlertOctagon size={32} className="text-slate-600 mx-auto mb-3" />
+            <p className="text-slate-400 text-sm">No escalation incidents found.</p>
+            <p className="text-slate-500 text-xs mt-1">Run the engine benchmark to populate data.</p>
+          </div>
+        ) : (
+          <div className="space-y-5">
+            {sortedDays.map((day) => (
+              <div key={day}>
+                <div className="flex items-center gap-3 mb-3">
+                  <Calendar size={13} className="text-slate-500" />
+                  <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">
+                    {new Date(day + "T00:00:00Z").toLocaleDateString("en-US", {
+                      weekday: "long", month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
+                    })}
+                  </span>
+                  <div className="flex-1 h-px bg-[#1e293b]" />
+                  <span className="text-[11px] text-slate-500">
+                    {byDay[day].reduce((s, d) => s + Number(d.escalation_count), 0)} escalations
+                  </span>
+                </div>
+                <div className="space-y-2">
+                  {byDay[day].map((item, i) => (
+                    <div
+                      key={i}
+                      className="flex items-center justify-between rounded-lg border border-[#1e293b] bg-[#0c121e]/80 px-4 py-3 hover:border-amber-700/40 hover:bg-[#111927] transition-all"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="h-2 w-2 rounded-full bg-amber-400 shadow-[0_0_8px_rgba(251,191,36,0.5)]" />
+                        <ChannelBadge channel={item.channel} size="sm" />
+                        <span className="text-xs text-slate-300 font-medium">
+                          {item.channel.replace(/_/g, " ")} escalation
+                        </span>
+                      </div>
+                      <span className="text-xs font-bold text-amber-300">x{item.escalation_count}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
             ))}
-          </tbody>
-        </table>
+          </div>
+        )}
       </div>
     </div>
   );

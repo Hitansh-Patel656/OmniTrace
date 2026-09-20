@@ -30,16 +30,29 @@ Use deterministic matching (exact email/phone/loyalty ID match) as the primary
 resolution method, with probabilistic matching (device fingerprint, IP+time proximity)
 as a secondary pass for sessions with no strong identifier.
 
+Confidence scores assigned per identifier type (stored in `identity_links.confidence_score`):
+
+| Identifier type | Score | Rationale |
+|---|---|---|
+| `email`, `phone`, `loyalty_id` | **1.0** | Globally unique — deterministic |
+| `device_id`, `cookie_id` | **0.85** | Device-scoped but not globally unique |
+| `ip_address` | **0.80** | Shared NAT/household risk — lowest confidence |
+
+These values are hardcoded constants in `src/services/identity.ts`. They are not
+runtime-configurable at this time.
+
 ### Reason
 
 Deterministic matching is fast, explainable, and low-risk to implement in a hackathon
-timeframe. Probabilistic matching covers anonymous/guest sessions but needs a
-confidence threshold to avoid false merges — starting simple and adding probabilistic
-matching only if time allows.
+timeframe. Probabilistic matching covers anonymous/guest sessions. The 0.85/0.80
+thresholds were chosen conservatively: below 1.0 to flag probabilistic links as
+auditable, but above 0.5 to still surface them in analyst views. IP-address links
+are scored lowest because a single NAT or household WiFi can produce many distinct
+customers sharing one IP.
 
 ### Date
 
-2026-09-19
+2026-09-19 (thresholds documented 2026-09-20)
 
 ---
 
@@ -111,24 +124,7 @@ proxy rather than real churn data.
 
 ---
 
-## ADR-006: (template — copy this for new decisions)
-
-### Decision
-
-*What was decided.*
-
-### Reason
-
-*Why this option was chosen over alternatives.*
-
-### Date
-
-YYYY-MM-DD
-
----
-
-
-## ADR-006: Synthetic dataset includes ground-truth labels for evaluation only
+## ADR-007: Synthetic dataset includes ground-truth labels for evaluation only
 
 ### Decision
 
@@ -146,3 +142,31 @@ perfect results that don't reflect real-world accuracy.
 ### Date
 
 2026-09-19
+
+---
+
+## ADR-008: Known limitation — cross-channel identity without a bridge event
+
+### Decision
+
+When a customer's call-center identifier (phone) and web identifier (email) never
+appear together in a single event, the resolution engine cannot automatically merge
+them into one customer record. This produces two separate customer records for
+what is actually the same person (seen in cust_004 / Dave scenario).
+
+In such cases, the correct resolution path is analyst-assisted merge via
+`POST /api/identity/merge`. The engine will not speculatively merge customers
+based on behavioral signals alone (e.g. same time-of-day activity, same IP) to
+avoid false positives.
+
+### Reason
+
+Adding speculative cross-identifier merges (e.g. "same IP AND phone used within
+1 hour — must be same person") would lower precision even if it improves recall.
+For a hackathon demo this trade-off favors precision (no false merges) over recall
+(may miss some real merges). The analyst override endpoint provides the escape
+hatch for known cases.
+
+### Date
+
+2026-09-20
