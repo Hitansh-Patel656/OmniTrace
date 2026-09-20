@@ -11,7 +11,10 @@
     "engine:benchmark:clean": "ts-node data/run-engine.ts --clean",
     "compute:analytics": "ts-node src/scripts/compute-analytics.ts",
     "frontend": "npm run dev --prefix frontend",
-    "lint": "eslint src/**/*.ts"
+    "lint": "eslint src/**/*.ts",
+    "docker:build": "docker compose build",
+    "docker:up": "docker compose up -d",
+    "docker:down": "docker compose down"
   },
 
   "keywords": [

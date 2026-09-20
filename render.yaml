@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: omnitrace-api
+    env: docker
+    dockerfilePath: ./Dockerfile
+    plan: free
+    healthCheckPath: /health
+    envVars:
+      - key: PORT
+        value: 3001
+      - key: NODE_ENV
+        value: production
+      - key: DB_NAME
+        value: omnidb
+      - key: MONGODB_URI
+        sync: false
+      - key: DATABASE_URL
+        sync: false

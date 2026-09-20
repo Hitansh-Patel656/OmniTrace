@@ -98,13 +98,13 @@ export default function CustomersPage() {
     setLoyaltyId("");
 
     if (persona.lookupKey === "email") {
-      setEmail(persona.lookupVal);
+      setEmail(persona.lookupVal || "");
       handleSearch({ email: persona.lookupVal });
     } else if (persona.lookupKey === "phone") {
-      setPhone(persona.lookupVal);
+      setPhone(persona.lookupVal || "");
       handleSearch({ phone: persona.lookupVal });
     } else if (persona.lookupKey === "loyalty_id") {
-      setLoyaltyId(persona.lookupVal);
+      setLoyaltyId(persona.lookupVal || "");
       handleSearch({ loyalty_id: persona.lookupVal });
     }
   };

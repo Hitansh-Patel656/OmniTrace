@@ -11,8 +11,21 @@ let pool: Pool | null = null;
  */
 export function getPool(): Pool {
   if (!pool) {
+    const connectionString =
+      process.env.DATABASE_URL || "postgresql://localhost:5432/omnidb";
+
+    const isRemote =
+      connectionString.includes(".tech") ||
+      connectionString.includes(".supabase.") ||
+      connectionString.includes(".render.com") ||
+      connectionString.includes("sslmode=require") ||
+      (process.env.NODE_ENV === "production" &&
+        !connectionString.includes("localhost") &&
+        !connectionString.includes("postgres:5432"));
+
     pool = new Pool({
-      connectionString: process.env.DATABASE_URL || "postgresql://localhost:5432/omnidb",
+      connectionString,
+      ssl: isRemote ? { rejectUnauthorized: false } : undefined,
     });
 
     pool.on("error", (err) => {
