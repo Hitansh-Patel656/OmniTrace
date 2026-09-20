@@ -9,6 +9,8 @@
     "dev": "ts-node src/index.ts",
     "engine:benchmark": "ts-node data/run-engine.ts",
     "engine:benchmark:clean": "ts-node data/run-engine.ts --clean",
+    "compute:analytics": "ts-node src/scripts/compute-analytics.ts",
+    "frontend": "npm run dev --prefix frontend",
     "lint": "eslint src/**/*.ts"
   },
 

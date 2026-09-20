@@ -8,9 +8,81 @@ import { parsePagination, paginatedResponse } from "../utils/pagination";
 const router = Router();
 
 // ---------------------------------------------------------------------------
-// IMPORTANT: /customers/search must be registered BEFORE /customers/:customer_id/timeline
-// so Express does not try to match the literal string "search" as a UUID param.
+// IMPORTANT: /customers and /customers/search must be registered BEFORE
+// /customers/:customer_id/timeline so Express does not try to match the literal strings as a UUID param.
 // ---------------------------------------------------------------------------
+
+// ---------------------------------------------------------------------------
+// GET /api/customers
+// Live directory of all stitched customers with aggregated metrics.
+// ---------------------------------------------------------------------------
+
+router.get("/customers", async (req: Request, res: Response): Promise<void> => {
+  const { page, limit, offset } = parsePagination(req.query);
+
+  try {
+    const [countRes] = await query<{ count: string }>("SELECT COUNT(*)::text AS count FROM customers");
+    const total = parseInt(countRes?.count || "0", 10);
+
+    const rows = await query<{
+      customer_id: string;
+      created_at: string;
+      total_events: string;
+      channels: string[];
+      primary_identifier: string | null;
+      has_escalation: boolean;
+      has_dropoff: boolean;
+      is_churn_risk: boolean;
+    }>(`
+      SELECT c.customer_id,
+             c.created_at,
+             COALESCE(e.total_events, 0) AS total_events,
+             COALESCE(e.channels, ARRAY[]::varchar[]) AS channels,
+             (
+               SELECT il.identifier_value
+                 FROM identity_links il
+                WHERE il.customer_id = c.customer_id
+                ORDER BY il.confidence_score DESC, il.linked_at ASC
+                LIMIT 1
+             ) AS primary_identifier,
+             COALESCE(e.has_escalation, false) AS has_escalation,
+             COALESCE(e.has_dropoff, false) AS has_dropoff,
+             EXISTS(
+               SELECT 1 FROM analytics_flags af
+                WHERE af.customer_id = c.customer_id
+                  AND af.flag_type = 'churn_risk'
+             ) AS is_churn_risk
+        FROM customers c
+        LEFT JOIN (
+          SELECT customer_id,
+                 COUNT(*) AS total_events,
+                 ARRAY_AGG(DISTINCT channel) AS channels,
+                 BOOL_OR(is_escalation) AS has_escalation,
+                 BOOL_OR(is_dropoff) AS has_dropoff
+            FROM timeline_events
+           GROUP BY customer_id
+        ) e ON e.customer_id = c.customer_id
+       ORDER BY c.created_at DESC
+       LIMIT $1 OFFSET $2
+    `, [limit, offset]);
+
+    const data = rows.map((r) => ({
+      customer_id: r.customer_id,
+      created_at: r.created_at,
+      total_events: parseInt(String(r.total_events), 10),
+      channels: r.channels || [],
+      primary_identifier: r.primary_identifier,
+      has_escalation: Boolean(r.has_escalation),
+      has_dropoff: Boolean(r.has_dropoff),
+      is_churn_risk: Boolean(r.is_churn_risk),
+    }));
+
+    res.json(paginatedResponse(data, total, page, limit));
+  } catch (err) {
+    console.error("GET /customers error:", err);
+    sendError(res, 500, "Internal server error", errorMessage(err));
+  }
+});
 
 // ---------------------------------------------------------------------------
 // GET /api/customers/search?email=&phone=&loyalty_id=

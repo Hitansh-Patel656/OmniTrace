@@ -14,6 +14,7 @@ import { QueryResultRow } from "pg";
 import { getCollection, closeDb } from "../src/db/mongo";
 import { query, closePool } from "../src/db/postgres";
 import { processRawEvent } from "../src/services/engine";
+import { computeAnalyticsFlags } from "../src/services/analytics";
 import { RawEventDoc, Channel } from "../src/types";
 
 dotenv.config();
@@ -211,6 +212,9 @@ async function run() {
     });
     console.log("");
   }
+
+  console.log("📊 Computing post-benchmark cross-channel analytics flags...");
+  await computeAnalyticsFlags();
 
   await closePool();
   await closeDb();

@@ -1,8 +1,10 @@
 # Dependencies
 node_modules/
+frontend/node_modules/
 
 # Build output
 dist/
+frontend/.next/
 
 # Environment — NEVER commit real credentials
 .env
@@ -20,3 +22,6 @@ Thumbs.db
 # Editor
 .vscode/
 .idea/
+
+# Local agent skills & config — not for version control
+.agents/

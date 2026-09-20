@@ -268,4 +268,173 @@ router.get(
   }
 );
 
+// ---------------------------------------------------------------------------
+// GET /api/analytics/funnel
+// Dynamic multi-stage conversion funnel and channel friction matrix.
+// Aggregated in real time from timeline_events.
+// ---------------------------------------------------------------------------
+
+router.get("/analytics/funnel", async (_req: Request, res: Response): Promise<void> => {
+  try {
+    const [
+      [stage1Res],
+      [stage2Res],
+      [stage3Res],
+      [stage4Res],
+      [stage5Res],
+    ] = await Promise.all([
+      query<{ count: string }>("SELECT COUNT(*)::text AS count FROM timeline_events"),
+      query<{ count: string }>("SELECT COUNT(*)::text AS count FROM timeline_events WHERE event_type IN ('page_view', 'app_login', 'issue_reported', 'add_to_cart', 'checkout_started', 'checkout_abandoned', 'order_placed')"),
+      query<{ count: string }>("SELECT COUNT(*)::text AS count FROM timeline_events WHERE event_type IN ('add_to_cart', 'checkout_started', 'checkout_abandoned', 'order_placed')"),
+      query<{ count: string }>("SELECT COUNT(*)::text AS count FROM timeline_events WHERE event_type IN ('checkout_started', 'checkout_abandoned', 'order_placed')"),
+      query<{ count: string }>("SELECT COUNT(*)::text AS count FROM timeline_events WHERE event_type IN ('order_placed', 'purchase')"),
+    ]);
+
+    const s1 = parseInt(stage1Res?.count || "0", 10);
+    const s2 = parseInt(stage2Res?.count || "0", 10);
+    const s3 = parseInt(stage3Res?.count || "0", 10);
+    const s4 = parseInt(stage4Res?.count || "0", 10);
+    const s5 = parseInt(stage5Res?.count || "0", 10);
+
+    const calcRetention = (curr: number, prev: number) => {
+      if (prev === 0) return "100%";
+      return `${((curr / prev) * 100).toFixed(1)}%`;
+    };
+
+    const calcDrop = (curr: number, prev: number) => {
+      if (prev === 0) return "0%";
+      const diff = curr - prev;
+      return `${((diff / prev) * 100).toFixed(1)}%`;
+    };
+
+    const stages = [
+      {
+        step: 1,
+        name: "Session Ingestion",
+        events: "session_start, store_visit, in_person_visit, call_initiated",
+        volume: s1,
+        pctOfTotal: s1 > 0 ? 100 : 0,
+        retention: "100%",
+        dropPct: "0%",
+        status: "optimal",
+        color: "from-indigo-600 to-indigo-500",
+      },
+      {
+        step: 2,
+        name: "Engagement & Browse",
+        events: "page_view, app_login, issue_reported",
+        volume: s2,
+        pctOfTotal: s1 > 0 ? Number(((s2 / s1) * 100).toFixed(1)) : 0,
+        retention: calcRetention(s2, s1),
+        dropPct: calcDrop(s2, s1),
+        status: "healthy",
+        color: "from-blue-600 to-cyan-500",
+      },
+      {
+        step: 3,
+        name: "Cart Intent",
+        events: "add_to_cart",
+        volume: s3,
+        pctOfTotal: s1 > 0 ? Number(((s3 / s1) * 100).toFixed(1)) : 0,
+        retention: calcRetention(s3, s2),
+        dropPct: calcDrop(s3, s2),
+        status: "healthy",
+        color: "from-cyan-600 to-teal-500",
+      },
+      {
+        step: 4,
+        name: "Checkout Initiated",
+        events: "checkout_started",
+        volume: s4,
+        pctOfTotal: s1 > 0 ? Number(((s4 / s1) * 100).toFixed(1)) : 0,
+        retention: calcRetention(s4, s3),
+        dropPct: calcDrop(s4, s3),
+        status: "warning",
+        color: "from-amber-600 to-amber-500",
+      },
+      {
+        step: 5,
+        name: "Order Placed",
+        events: "order_placed, purchase",
+        volume: s5,
+        pctOfTotal: s1 > 0 ? Number(((s5 / s1) * 100).toFixed(1)) : 0,
+        retention: calcRetention(s5, s4),
+        dropPct: calcDrop(s5, s4),
+        status: "optimal",
+        color: "from-emerald-600 to-emerald-500",
+      },
+    ];
+
+    // Channel friction matrix
+    const channelRows = await query<{
+      channel: string;
+      total_events: string;
+      dropoff_count: string;
+      escalation_count: string;
+    }>(`
+      SELECT channel,
+             COUNT(*) AS total_events,
+             COUNT(*) FILTER (WHERE is_dropoff = true) AS dropoff_count,
+             COUNT(*) FILTER (WHERE is_escalation = true) AS escalation_count
+        FROM timeline_events
+       GROUP BY channel
+       ORDER BY dropoff_count DESC, total_events DESC
+    `);
+
+    const totalDropoffs = channelRows.reduce((acc, r) => acc + parseInt(r.dropoff_count, 10), 0);
+
+    const channels = channelRows.map((r) => {
+      const dropoffs = parseInt(r.dropoff_count, 10);
+      const total = parseInt(r.total_events, 10);
+      const share = totalDropoffs > 0 ? Number(((dropoffs / totalDropoffs) * 100).toFixed(1)) : 0;
+      return {
+        channel: r.channel,
+        totalEvents: total,
+        dropoffs,
+        escalations: parseInt(r.escalation_count, 10),
+        share,
+        status: dropoffs > 0 ? "High Friction" : "Smooth Flow",
+      };
+    });
+
+    // Top abandonment points with customer examples
+    const abandonmentPoints = await query<{
+      channel: string;
+      event_type: string;
+      dropoff_count: string;
+      example_customer_id: string | null;
+    }>(`
+      SELECT te.channel,
+             te.event_type,
+             COUNT(*) AS dropoff_count,
+             (SELECT customer_id FROM timeline_events sub WHERE sub.channel = te.channel AND sub.event_type = te.event_type AND sub.is_dropoff = true LIMIT 1) AS example_customer_id
+        FROM timeline_events te
+       WHERE is_dropoff = true
+       GROUP BY te.channel, te.event_type
+       ORDER BY dropoff_count DESC
+    `);
+
+    const abandonments = abandonmentPoints.map((r) => ({
+      channel: r.channel,
+      event_type: r.event_type,
+      dropoff_count: parseInt(r.dropoff_count, 10),
+      example_customer_id: r.example_customer_id,
+      share: totalDropoffs > 0 ? Number(((parseInt(r.dropoff_count, 10) / totalDropoffs) * 100).toFixed(1)) : 100,
+    }));
+
+    res.json({
+      overallConversionRate: s1 > 0 ? Number(((s5 / s1) * 100).toFixed(1)) : 0,
+      totalEvents: s1,
+      totalConvertedOrders: s5,
+      totalDropoffs,
+      stages,
+      channels,
+      abandonments,
+    });
+  } catch (err) {
+    console.error("GET /analytics/funnel error:", err);
+    sendError(res, 500, "Internal server error", errorMessage(err));
+  }
+});
+
 export default router;

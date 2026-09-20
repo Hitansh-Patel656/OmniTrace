@@ -22,16 +22,16 @@ The platform must allow organizations to understand:
 
 ## Deliverables
 
-| # | Deliverable                                                  | Status         |
-| - | ------------------------------------------------------------ | -------------- |
-| 1 | Identity-resolution algorithm design                         | ⬜ Not started |
-| 2 | Link customer interactions across multiple channels          | ⬜ Not started |
-| 3 | Data pipeline for event ingestion                            | ⬜ Not started |
-| 4 | Normalize and stitch events into a unified customer timeline | ⬜ Not started |
-| 5 | Analyst-facing journey visualization interface               | ⬜ Not started |
-| 6 | Highlight drop-off points and escalations                    | ⬜ Not started |
-| 7 | Identify patterns associated with churn and repeat contacts  | ⬜ Not started |
-| 8 | Optimize identity-resolution accuracy and data latency       | ⬜ Not started |
+| # | Deliverable                                                  | Status       |
+| - | ------------------------------------------------------------ | ------------ |
+| 1 | Identity-resolution algorithm design                         | ✅ Completed |
+| 2 | Link customer interactions across multiple channels          | ✅ Completed |
+| 3 | Data pipeline for event ingestion                            | ✅ Completed |
+| 4 | Normalize and stitch events into a unified customer timeline | ✅ Completed |
+| 5 | Analyst-facing journey visualization interface               | ✅ Completed |
+| 6 | Highlight drop-off points and escalations                    | ✅ Completed |
+| 7 | Identify patterns associated with churn and repeat contacts  | ✅ Completed |
+| 8 | Optimize identity-resolution accuracy and data latency       | ✅ Completed |
 
 Update the Status column as you progress — this doubles as a hackathon checklist.
 
